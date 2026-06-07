@@ -105,52 +105,45 @@ export default function AdminCustomers() {
         </select>
       </div>
 
-      <div className="fe-card">
-        <div className="table-wrap">
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <i className="ti ti-stethoscope" style={{ fontSize: 36, display: 'block', marginBottom: 8 }} />
-              {search || filterType !== 'all' ? 'No results for your search' : 'No customers/HCPs added yet'}
-            </div>
-          ) : (
-            <table>
-              <thead>
-                <tr><th>Name</th><th>Type</th><th>Specialty</th><th>Clinic / Outlet</th><th>Location</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                {filtered.map(c => (
-                  <tr key={c.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 34, height: 34, background: TYPE_COLORS[c.type] || 'var(--fe-gray-50)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <i className={`ti ${TYPE_ICON[c.type] || 'ti-user'}`} style={{ fontSize: 16, color: 'var(--fe-teal-600)' }} />
-                        </div>
-                        <div style={{ fontWeight: 500 }}>{c.name}</div>
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: TYPE_COLORS[c.type] || 'var(--fe-gray-50)', color: 'var(--fe-teal-800)' }}>
-                        {c.type}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 13 }}>{c.specialty || '—'}</td>
-                    <td style={{ fontSize: 13 }}>{c.clinic || '—'}</td>
-                    <td style={{ fontSize: 13 }}>{locMap[c.location] || '—'}</td>
-                    <td>
-                      <button
-                        onClick={() => deleteCustomer(c.id)}
-                        style={{ background: 'none', border: '1px solid var(--fe-red-100)', borderRadius: 6, cursor: 'pointer', color: 'var(--fe-red-400)', padding: '4px 10px', fontSize: 12 }}
-                      >
-                        <i className="ti ti-trash" /> Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+      {filtered.length === 0 ? (
+        <div className="fe-card">
+          <div className="empty-state">
+            <i className="ti ti-stethoscope" style={{ fontSize: 36, display: 'block', marginBottom: 8 }} />
+            {search || filterType !== 'all' ? 'No results for your search' : 'No customers/HCPs added yet'}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {filtered.map(c => (
+            <div key={c.id} className="fe-card" style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ width: 42, height: 42, background: TYPE_COLORS[c.type] || 'var(--fe-gray-50)', border: '1px solid var(--fe-teal-100)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className={`ti ${TYPE_ICON[c.type] || 'ti-user'}`} style={{ fontSize: 18, color: 'var(--fe-teal-600)' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
+                    <button onClick={() => deleteCustomer(c.id)}
+                      style={{ background: 'none', border: '1px solid var(--fe-red-100)', borderRadius: 6, cursor: 'pointer', color: 'var(--fe-red-400)', padding: '3px 8px', fontSize: 12, flexShrink: 0 }}>
+                      <i className="ti ti-trash" />
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: TYPE_COLORS[c.type] || 'var(--fe-gray-50)', color: 'var(--fe-teal-800)' }}>{c.type}</span>
+                    {c.specialty && <span style={{ fontSize: 12, color: 'var(--fe-gray-500)' }}>{c.specialty}</span>}
+                  </div>
+                  {(c.clinic || locMap[c.location]) && (
+                    <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+                      {c.clinic && <span style={{ fontSize: 12, color: 'var(--fe-gray-400)' }}><i className="ti ti-building" style={{ fontSize: 11 }} /> {c.clinic}</span>}
+                      {locMap[c.location] && <span style={{ fontSize: 12, color: 'var(--fe-gray-400)' }}><i className="ti ti-map-pin" style={{ fontSize: 11 }} /> {locMap[c.location]}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>

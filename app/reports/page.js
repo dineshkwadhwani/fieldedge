@@ -5,6 +5,15 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import AppShell from '@/components/AppShell';
 
+const STATUS_LABELS = {
+  pending_manager: 'Pending Mgr', pending_director: 'Pending Dir',
+  manager_approved: 'Mgr Approved', approved: 'Approved', rejected: 'Rejected'
+};
+const STATUS_CLS = {
+  pending_manager: 'badge-pending', pending_director: 'badge-pending',
+  manager_approved: 'badge-mgr-approved', approved: 'badge-approved', rejected: 'badge-rejected'
+};
+
 export default function ReportsPage() {
   const { user, loading } = useAuth();
   const { showToast } = useToast();
@@ -41,9 +50,7 @@ export default function ReportsPage() {
       setAttendance(attData.attendance || []);
       setExpenses(expData.expenses || []);
       setLeaves(lvData.leaves || []);
-    } finally {
-      setLoadingData(false);
-    }
+    } finally { setLoadingData(false); }
   };
 
   const exportCSV = async (type) => {
@@ -55,8 +62,7 @@ export default function ReportsPage() {
     const csv = [headers.join(','), ...data.rows.map(r => headers.map(h => `"${String(r[h] || '').replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = data.filename || `${type}.csv`; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = data.filename || `${type}.csv`; a.click();
     URL.revokeObjectURL(url);
     showToast('Export downloaded', 'success');
   };
@@ -67,6 +73,7 @@ export default function ReportsPage() {
   const approvedExp = expenses.filter(e => e.status === 'approved').reduce((s, e) => s + (e.amount || 0), 0);
   const presentDays = attendance.filter(a => a.userId === user.id && a.type === 'present').length;
   const leaveDays = leaves.filter(l => l.userId === user.id && l.status === 'approved').length;
+  const dayCount = (from, to) => Math.ceil((new Date(to) - new Date(from)) / 86400000) + 1;
 
   return (
     <AppShell>
@@ -75,6 +82,9 @@ export default function ReportsPage() {
           <h1 className="page-title">Reports</h1>
           <p className="page-sub">Field activity analytics and data export</p>
         </div>
+        <button className="fe-btn-outline" onClick={() => exportCSV(tab)}>
+          <i className="ti ti-download" /> Export CSV
+        </button>
       </div>
 
       {/* Date filter */}
@@ -90,9 +100,6 @@ export default function ReportsPage() {
           </div>
           <button className="fe-btn-primary" onClick={loadAll} disabled={loadingData}>
             <i className="ti ti-search" /> {loadingData ? 'Loading...' : 'Apply Filter'}
-          </button>
-          <button className="fe-btn-outline" onClick={() => exportCSV(tab)}>
-            <i className="ti ti-download" /> Export {tab === 'attendance' ? 'Attendance' : tab === 'expenses' ? 'Expenses' : 'Leaves'} CSV
           </button>
         </div>
       </div>
@@ -127,100 +134,73 @@ export default function ReportsPage() {
         ))}
       </div>
 
-      {/* Tables */}
+      {/* Attendance tiles */}
       {tab === 'attendance' && (
-        <div className="fe-card">
-          <div className="table-wrap">
-            {attendance.length === 0 ? <div className="empty-state">No attendance data for selected period</div> : (
-              <table>
-                <thead><tr>
-                  {isTeam && <th>Employee</th>}
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Location</th>
-                  <th>HCPs Visited</th>
-                  <th>Notes</th>
-                </tr></thead>
-                <tbody>
-                  {attendance.map(a => (
-                    <tr key={a.id}>
-                      {isTeam && <td><div style={{ fontWeight: 500 }}>{a.userName}</div><div style={{ fontSize: 11, color: 'var(--fe-gray-400)' }}>{a.userEmpId}</div></td>}
-                      <td>{a.date}</td>
-                      <td><span className={`badge badge-${a.type}`}>{a.type === 'present' ? 'Present' : 'Leave'}</span></td>
-                      <td>{a.locationName || '—'}</td>
-                      <td style={{ fontSize: 12 }}>{a.customerNames?.join(', ') || '—'}</td>
-                      <td style={{ fontSize: 12, color: 'var(--fe-gray-400)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.comments || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+        attendance.length === 0
+          ? <div className="fe-card"><div className="empty-state">No attendance data for selected period</div></div>
+          : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {attendance.map(a => (
+                <div key={a.id} className="fe-card" style={{ padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {isTeam && <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 1 }}>{a.userName} <span style={{ color: 'var(--fe-gray-400)', fontWeight: 400, fontSize: 12 }}>{a.userEmpId}</span></div>}
+                      <div style={{ fontSize: 13, color: isTeam ? 'var(--fe-gray-500)' : 'var(--fe-gray-800)' }}>{a.date}</div>
+                      {a.locationName && <div style={{ fontSize: 12, color: 'var(--fe-gray-400)', marginTop: 2 }}><i className="ti ti-map-pin" style={{ fontSize: 11 }} /> {a.locationName}</div>}
+                      {a.customerNames?.length > 0 && <div style={{ fontSize: 12, color: 'var(--fe-teal-600)', marginTop: 2 }}>{a.customerNames.join(', ')}</div>}
+                      {a.comments && <div style={{ fontSize: 11, color: 'var(--fe-gray-400)', marginTop: 3, fontStyle: 'italic' }}>{a.comments.slice(0, 80)}{a.comments.length > 80 ? '…' : ''}</div>}
+                    </div>
+                    <span className={`badge badge-${a.type}`} style={{ flexShrink: 0 }}>{a.type === 'present' ? 'Present' : 'Leave'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
       )}
 
+      {/* Expenses tiles */}
       {tab === 'expenses' && (
-        <div className="fe-card">
-          <div className="table-wrap">
-            {expenses.length === 0 ? <div className="empty-state">No expense data for selected period</div> : (
-              <table>
-                <thead><tr>
-                  {isTeam && <th>Employee</th>}
-                  <th>Date</th>
-                  <th>Title</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr></thead>
-                <tbody>
-                  {expenses.map(e => {
-                    const STATUS = { pending_manager: ['badge-pending', 'Pending Mgr'], pending_director: ['badge-pending', 'Pending Dir'], manager_approved: ['badge-mgr-approved', 'Mgr Approved'], approved: ['badge-approved', 'Approved'], rejected: ['badge-rejected', 'Rejected'] };
-                    const [cls, lbl] = STATUS[e.status] || ['', e.status];
-                    return (
-                      <tr key={e.id}>
-                        {isTeam && <td><div style={{ fontWeight: 500 }}>{e.userName}</div></td>}
-                        <td>{e.date}</td>
-                        <td>{e.title}</td>
-                        <td style={{ fontWeight: 500 }}>₹{e.amount?.toLocaleString('en-IN')}</td>
-                        <td><span className={`badge ${cls}`}>{lbl}</span></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+        expenses.length === 0
+          ? <div className="fe-card"><div className="empty-state">No expense data for selected period</div></div>
+          : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {expenses.map(e => (
+                <div key={e.id} className="fe-card" style={{ padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {isTeam && <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 1 }}>{e.userName}</div>}
+                      <div style={{ fontWeight: 500, fontSize: 13 }}>{e.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--fe-gray-400)', marginTop: 1 }}>{e.date}</div>
+                      <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--fe-teal-600)' }}>₹{e.amount?.toLocaleString('en-IN')}</span>
+                        <span className={`badge ${STATUS_CLS[e.status]}`}>{STATUS_LABELS[e.status] || e.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
       )}
 
+      {/* Leaves tiles */}
       {tab === 'leaves' && (
-        <div className="fe-card">
-          <div className="table-wrap">
-            {leaves.length === 0 ? <div className="empty-state">No leave data</div> : (
-              <table>
-                <thead><tr>
-                  {isTeam && <th>Employee</th>}
-                  <th>From</th>
-                  <th>To</th>
-                  <th>Days</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                </tr></thead>
-                <tbody>
-                  {leaves.map(l => (
-                    <tr key={l.id}>
-                      {isTeam && <td style={{ fontWeight: 500 }}>{l.userName}</td>}
-                      <td>{l.fromDate}</td>
-                      <td>{l.toDate}</td>
-                      <td>{Math.ceil((new Date(l.toDate) - new Date(l.fromDate)) / 86400000) + 1}</td>
-                      <td style={{ fontSize: 12 }}>{l.reason}</td>
-                      <td><span className={`badge badge-${l.status === 'approved' ? 'approved' : l.status === 'rejected' ? 'rejected' : 'pending'}`}>{l.status.charAt(0).toUpperCase() + l.status.slice(1)}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+        leaves.length === 0
+          ? <div className="fe-card"><div className="empty-state">No leave data</div></div>
+          : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {leaves.map(l => (
+                <div key={l.id} className="fe-card" style={{ padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      {isTeam && <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>{l.userName}</div>}
+                      <div style={{ fontSize: 13, color: 'var(--fe-gray-800)' }}>{l.fromDate} → {l.toDate}
+                        <span style={{ fontSize: 12, color: 'var(--fe-gray-400)', marginLeft: 8 }}>{dayCount(l.fromDate, l.toDate)} days</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--fe-gray-400)', marginTop: 2 }}>{l.reason}</div>
+                    </div>
+                    <span className={`badge ${l.status === 'approved' ? 'badge-approved' : l.status === 'rejected' ? 'badge-rejected' : 'badge-pending'}`} style={{ flexShrink: 0 }}>
+                      {l.status.charAt(0).toUpperCase() + l.status.slice(1)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
       )}
     </AppShell>
   );

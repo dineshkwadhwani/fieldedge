@@ -16,7 +16,6 @@ export default function LeavesPage() {
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [form, setForm] = useState({ fromDate: '', toDate: '', reason: '' });
   const today = new Date().toISOString().split('T')[0];
-
   const isManager = ['manager', 'director', 'ceo', 'super_admin'].includes(user?.role);
 
   useEffect(() => {
@@ -25,12 +24,7 @@ export default function LeavesPage() {
   }, [user, loading]);
 
   const loadLeaves = async () => {
-    let url;
-    if (!isManager) {
-      url = `/api/leaves?userId=${user.id}`;
-    } else {
-      url = `/api/leaves?managerId=${user.id}`;
-    }
+    const url = !isManager ? `/api/leaves?userId=${user.id}` : `/api/leaves?managerId=${user.id}`;
     const res = await fetch(url);
     const data = await res.json();
     setLeaves(data.leaves || []);
@@ -44,7 +38,7 @@ export default function LeavesPage() {
         body: JSON.stringify({ action, rejectionReason: rejReason })
       });
       if (!res.ok) { showToast('Action failed', 'error'); return; }
-      showToast(action === 'approve' ? 'Email Sent — Leave approved and employee notified' : 'Leave rejected', action === 'approve' ? 'success' : 'warning');
+      showToast(action === 'approve' ? 'Email Sent — Leave approved' : 'Leave rejected', action === 'approve' ? 'success' : 'warning');
       setRejModal(null); setRejReason('');
       loadLeaves();
     } catch { showToast('Error', 'error'); }
@@ -62,8 +56,7 @@ export default function LeavesPage() {
       const data = await res.json();
       if (!res.ok) { showToast(data.error, 'error'); return; }
       showToast('Email Sent — Leave request sent to your manager', 'success');
-      setShowApplyForm(false);
-      setForm({ fromDate: '', toDate: '', reason: '' });
+      setShowApplyForm(false); setForm({ fromDate: '', toDate: '', reason: '' });
       loadLeaves();
     } catch { showToast('Error', 'error'); }
   };
@@ -73,6 +66,8 @@ export default function LeavesPage() {
   const pending = leaves.filter(l => l.status === 'pending');
   const processed = leaves.filter(l => l.status !== 'pending');
   const displayList = tab === 'pending' ? pending : processed;
+
+  const dayCount = (from, to) => Math.ceil((new Date(to) - new Date(from)) / 86400000) + 1;
 
   return (
     <AppShell>
@@ -89,12 +84,12 @@ export default function LeavesPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button onClick={() => setTab('pending')} style={{ padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: tab === 'pending' ? 'none' : '1px solid var(--fe-gray-100)', background: tab === 'pending' ? 'var(--fe-teal-600)' : 'white', color: tab === 'pending' ? 'white' : 'var(--fe-gray-600)' }}>
-          Pending ({pending.length})
-        </button>
-        <button onClick={() => setTab('history')} style={{ padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: tab === 'history' ? 'none' : '1px solid var(--fe-gray-100)', background: tab === 'history' ? 'var(--fe-teal-600)' : 'white', color: tab === 'history' ? 'white' : 'var(--fe-gray-600)' }}>
-          History ({processed.length})
-        </button>
+        {[['pending', pending.length], ['history', processed.length]].map(([t, count]) => (
+          <button key={t} onClick={() => setTab(t)}
+            style={{ padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: tab === t ? 'none' : '1px solid var(--fe-gray-100)', background: tab === t ? 'var(--fe-teal-600)' : 'white', color: tab === t ? 'white' : 'var(--fe-gray-600)', textTransform: 'capitalize' }}>
+            {t.charAt(0).toUpperCase() + t.slice(1)} ({count})
+          </button>
+        ))}
       </div>
 
       {displayList.length === 0 ? (
@@ -107,36 +102,42 @@ export default function LeavesPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {displayList.map(l => (
-            <div key={l.id} className="fe-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                  <div style={{ width: 44, height: 44, background: 'var(--fe-teal-50)', border: '1px solid var(--fe-teal-100)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <i className="ti ti-calendar-off" style={{ fontSize: 20, color: 'var(--fe-teal-600)' }} />
-                  </div>
-                  <div>
-                    {isManager && <div style={{ fontWeight: 600, fontSize: 14 }}>{l.userName} <span style={{ fontSize: 12, color: 'var(--fe-gray-400)', fontWeight: 400 }}>({l.userEmpId})</span></div>}
-                    <div style={{ fontSize: 13, color: isManager ? 'var(--fe-gray-600)' : 'var(--fe-gray-800)', fontWeight: isManager ? 400 : 600 }}>
-                      {l.fromDate} → {l.toDate}
-                      <span style={{ fontSize: 12, color: 'var(--fe-gray-400)', marginLeft: 8 }}>
-                        ({Math.ceil((new Date(l.toDate) - new Date(l.fromDate)) / 86400000) + 1} day{Math.ceil((new Date(l.toDate) - new Date(l.fromDate)) / 86400000) + 1 > 1 ? 's' : ''})
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--fe-gray-500)', marginTop: 4 }}>{l.reason}</div>
-                    {l.rejectionReason && <div style={{ fontSize: 12, color: 'var(--fe-red-600)', marginTop: 4 }}>Rejected: {l.rejectionReason}</div>}
-                  </div>
+            <div key={l.id} className="fe-card" style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ width: 40, height: 40, background: 'var(--fe-teal-50)', border: '1px solid var(--fe-teal-100)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className="ti ti-calendar-off" style={{ fontSize: 18, color: 'var(--fe-teal-600)' }} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span className={`badge ${l.status === 'approved' ? 'badge-approved' : l.status === 'rejected' ? 'badge-rejected' : 'badge-pending'}`}>
-                    {l.status.charAt(0).toUpperCase() + l.status.slice(1)}
-                  </span>
-                  {isManager && l.status === 'pending' && (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="fe-btn-danger fe-btn-sm" onClick={() => setRejModal(l)}>Reject</button>
-                      <button className="fe-btn-primary fe-btn-sm" onClick={() => handleAction(l.id, 'approve')}>
-                        <i className="ti ti-check" /> Approve
-                      </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {isManager && (
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>
+                      {l.userName} <span style={{ fontSize: 12, color: 'var(--fe-gray-400)', fontWeight: 400 }}>({l.userEmpId})</span>
                     </div>
                   )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13, fontWeight: isManager ? 400 : 500, color: 'var(--fe-gray-800)' }}>
+                      {l.fromDate} → {l.toDate}
+                    </span>
+                    <span style={{ fontSize: 12, background: 'var(--fe-gray-100)', color: 'var(--fe-gray-600)', borderRadius: 4, padding: '1px 7px' }}>
+                      {dayCount(l.fromDate, l.toDate)} day{dayCount(l.fromDate, l.toDate) > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--fe-gray-500)', marginTop: 4 }}>{l.reason}</div>
+                  {l.rejectionReason && (
+                    <div style={{ fontSize: 12, color: 'var(--fe-red-600)', marginTop: 4 }}>Rejected: {l.rejectionReason}</div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                    <span className={`badge ${l.status === 'approved' ? 'badge-approved' : l.status === 'rejected' ? 'badge-rejected' : 'badge-pending'}`}>
+                      {l.status.charAt(0).toUpperCase() + l.status.slice(1)}
+                    </span>
+                    {isManager && l.status === 'pending' && (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="fe-btn-danger fe-btn-sm" onClick={() => setRejModal(l)}>Reject</button>
+                        <button className="fe-btn-primary fe-btn-sm" onClick={() => handleAction(l.id, 'approve')}>
+                          <i className="ti ti-check" /> Approve
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -144,7 +145,6 @@ export default function LeavesPage() {
         </div>
       )}
 
-      {/* Apply Leave Modal (for field staff) */}
       {showApplyForm && (
         <div className="modal-overlay" onClick={() => setShowApplyForm(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -173,7 +173,6 @@ export default function LeavesPage() {
         </div>
       )}
 
-      {/* Reject Modal */}
       {rejModal && (
         <div className="modal-overlay" onClick={() => setRejModal(null)}>
           <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>

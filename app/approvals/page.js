@@ -5,6 +5,15 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import AppShell from '@/components/AppShell';
 
+const STATUS_COLORS = {
+  pending_manager: 'badge-pending', pending_director: 'badge-pending',
+  manager_approved: 'badge-mgr-approved', approved: 'badge-approved', rejected: 'badge-rejected'
+};
+const STATUS_LABELS = {
+  pending_manager: 'Pending Mgr', pending_director: 'Pending Dir',
+  manager_approved: 'Mgr Approved', approved: 'Approved', rejected: 'Rejected'
+};
+
 export default function ApprovalsPage() {
   const { user, loading } = useAuth();
   const { showToast } = useToast();
@@ -16,21 +25,12 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     if (!loading && !user) { router.push('/'); return; }
-    if (user && !['manager', 'director', 'ceo', 'super_admin'].includes(user.role)) {
-      router.push('/dashboard'); return;
-    }
+    if (user && !['manager', 'director', 'ceo', 'super_admin'].includes(user.role)) { router.push('/dashboard'); return; }
     if (user) loadExpenses();
   }, [user, loading]);
 
   const loadExpenses = async () => {
-    let url;
-    if (user.role === 'manager') {
-      url = `/api/expenses?pendingFor=${user.id}`;
-    } else if (['director', 'ceo'].includes(user.role)) {
-      url = `/api/expenses?pendingFor=${user.id}`;
-    } else {
-      url = `/api/expenses?forSpan=${user.id}`;
-    }
+    const url = `/api/expenses?${['director', 'ceo', 'manager'].includes(user.role) ? `pendingFor=${user.id}` : `forSpan=${user.id}`}`;
     const res = await fetch(url);
     const data = await res.json();
     setExpenses(data.expenses || []);
@@ -45,12 +45,9 @@ export default function ApprovalsPage() {
       });
       if (!res.ok) { showToast('Action failed', 'error'); return; }
       showToast(action === 'approve' ? 'Email Sent — Expense approved' : 'Expense rejected', action === 'approve' ? 'success' : 'warning');
-      setRejModal(null);
-      setRejReason('');
+      setRejModal(null); setRejReason('');
       loadExpenses();
-    } catch {
-      showToast('Error', 'error');
-    }
+    } catch { showToast('Error', 'error'); }
   };
 
   if (loading || !user) return null;
@@ -60,19 +57,8 @@ export default function ApprovalsPage() {
     ['director', 'ceo'].includes(user.role) ? e.status === 'pending_director' :
     ['pending_manager', 'pending_director'].includes(e.status)
   );
-
   const processed = expenses.filter(e => ['manager_approved', 'approved', 'rejected'].includes(e.status));
-
   const displayList = tab === 'pending' ? pending : processed;
-
-  const STATUS_COLORS = {
-    pending_manager: 'badge-pending', pending_director: 'badge-pending',
-    manager_approved: 'badge-mgr-approved', approved: 'badge-approved', rejected: 'badge-rejected'
-  };
-  const STATUS_LABELS = {
-    pending_manager: 'Pending Mgr', pending_director: 'Pending Dir',
-    manager_approved: 'Mgr Approved', approved: 'Approved', rejected: 'Rejected'
-  };
 
   return (
     <AppShell>
@@ -80,12 +66,12 @@ export default function ApprovalsPage() {
       <p className="page-sub">Review and action expense claims from your team</p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button onClick={() => setTab('pending')} style={{ padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: tab === 'pending' ? 'none' : '1px solid var(--fe-gray-100)', background: tab === 'pending' ? 'var(--fe-teal-600)' : 'white', color: tab === 'pending' ? 'white' : 'var(--fe-gray-600)' }}>
-          Pending ({pending.length})
-        </button>
-        <button onClick={() => setTab('processed')} style={{ padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: tab === 'processed' ? 'none' : '1px solid var(--fe-gray-100)', background: tab === 'processed' ? 'var(--fe-teal-600)' : 'white', color: tab === 'processed' ? 'white' : 'var(--fe-gray-600)' }}>
-          Processed ({processed.length})
-        </button>
+        {[['pending', pending.length], ['processed', processed.length]].map(([t, count]) => (
+          <button key={t} onClick={() => setTab(t)}
+            style={{ padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: tab === t ? 'none' : '1px solid var(--fe-gray-100)', background: tab === t ? 'var(--fe-teal-600)' : 'white', color: tab === t ? 'white' : 'var(--fe-gray-600)', textTransform: 'capitalize' }}>
+            {t.charAt(0).toUpperCase() + t.slice(1)} ({count})
+          </button>
+        ))}
       </div>
 
       {displayList.length === 0 ? (
@@ -98,35 +84,39 @@ export default function ApprovalsPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {displayList.map(e => (
-            <div key={e.id} className="fe-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 44, height: 44, background: 'var(--fe-amber-50)', border: '1px solid var(--fe-amber-100)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <i className="ti ti-receipt" style={{ fontSize: 20, color: 'var(--fe-amber-600)' }} />
+            <div key={e.id} className="fe-card" style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ width: 40, height: 40, background: 'var(--fe-amber-50)', border: '1px solid var(--fe-amber-100)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className="ti ti-receipt" style={{ fontSize: 18, color: 'var(--fe-amber-600)' }} />
                 </div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{e.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--fe-gray-400)', marginTop: 2 }}>{e.userName} · {e.date}</div>
-                  {e.description && <div style={{ fontSize: 12, color: 'var(--fe-gray-400)', maxWidth: 340 }}>{e.description.slice(0, 80)}{e.description.length > 80 ? '…' : ''}</div>}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700, fontSize: 17, color: 'var(--fe-teal-600)' }}>₹{e.amount?.toLocaleString('en-IN')}</div>
-                  <span className={`badge ${STATUS_COLORS[e.status]}`}>{STATUS_LABELS[e.status]}</span>
-                </div>
-                {tab === 'pending' && (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="fe-btn-danger fe-btn-sm" onClick={() => setRejModal(e)}>Reject</button>
-                    <button className="fe-btn-primary fe-btn-sm" onClick={() => handleAction(e.id, 'approve')}>
-                      <i className="ti ti-check" /> Approve
-                    </button>
+                  <div style={{ fontSize: 12, color: 'var(--fe-teal-600)', marginTop: 1 }}>{e.userName} · {e.date}</div>
+                  {e.description && (
+                    <div style={{ fontSize: 12, color: 'var(--fe-gray-400)', marginTop: 2 }}>
+                      {e.description.slice(0, 80)}{e.description.length > 80 ? '…' : ''}
+                    </div>
+                  )}
+                  {e.rejectionReason && (
+                    <div style={{ fontSize: 12, color: 'var(--fe-red-600)', marginTop: 4 }}>
+                      Rejected: {e.rejectionReason}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--fe-teal-600)' }}>₹{e.amount?.toLocaleString('en-IN')}</span>
+                      <span className={`badge ${STATUS_COLORS[e.status]}`}>{STATUS_LABELS[e.status]}</span>
+                    </div>
+                    {tab === 'pending' && (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="fe-btn-danger fe-btn-sm" onClick={() => setRejModal(e)}>Reject</button>
+                        <button className="fe-btn-primary fe-btn-sm" onClick={() => handleAction(e.id, 'approve')}>
+                          <i className="ti ti-check" /> Approve
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-                {tab === 'processed' && e.rejectionReason && (
-                  <div style={{ fontSize: 12, color: 'var(--fe-red-600)', maxWidth: 200 }}>
-                    <strong>Reason:</strong> {e.rejectionReason}
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           ))}
@@ -142,7 +132,7 @@ export default function ApprovalsPage() {
             </div>
             <div className="form-group">
               <label className="fe-label">Rejection Reason *</label>
-              <textarea className="fe-input" style={{ minHeight: 80 }} value={rejReason} onChange={e => setRejReason(e.target.value)} placeholder="Provide a reason for rejection..." />
+              <textarea className="fe-input" style={{ minHeight: 80 }} value={rejReason} onChange={e => setRejReason(e.target.value)} placeholder="Provide a reason..." />
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="fe-btn-outline" onClick={() => setRejModal(null)}>Cancel</button>

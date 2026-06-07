@@ -40,7 +40,6 @@ export default function ExpensesPage() {
     if (user.role === 'field_staff') url = `/api/expenses?userId=${user.id}`;
     else if (isAccountant) url = `/api/expenses?forAccountant=true`;
     else url = `/api/expenses?forSpan=${user.id}`;
-
     const res = await fetch(url);
     const data = await res.json();
     setExpenses(data.expenses || []);
@@ -51,10 +50,7 @@ export default function ExpensesPage() {
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) { showToast('Image must be under 3MB', 'error'); return; }
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setForm(p => ({ ...p, image: ev.target.result }));
-      setImagePreview(ev.target.result);
-    };
+    reader.onload = (ev) => { setForm(p => ({ ...p, image: ev.target.result })); setImagePreview(ev.target.result); };
     reader.readAsDataURL(file);
   };
 
@@ -76,11 +72,8 @@ export default function ExpensesPage() {
       setForm({ date: new Date().toISOString().split('T')[0], title: '', description: '', amount: '', image: null });
       setImagePreview(null);
       loadExpenses();
-    } catch {
-      showToast('Error submitting expense', 'error');
-    } finally {
-      setSubmitting(false);
-    }
+    } catch { showToast('Error submitting expense', 'error'); }
+    finally { setSubmitting(false); }
   };
 
   const handleApprove = async (expId, action, rejectionReason) => {
@@ -91,12 +84,10 @@ export default function ExpensesPage() {
         body: JSON.stringify({ action, approvedBy: user.id, rejectionReason })
       });
       if (!res.ok) { showToast('Action failed', 'error'); return; }
-      showToast(action === 'approve' ? 'Email Sent — Expense approved and next approver notified' : 'Expense rejected', action === 'approve' ? 'success' : 'warning');
+      showToast(action === 'approve' ? 'Email Sent — Expense approved' : 'Expense rejected', action === 'approve' ? 'success' : 'warning');
       setSelectedExp(null);
       loadExpenses();
-    } catch {
-      showToast('Error', 'error');
-    }
+    } catch { showToast('Error', 'error'); }
   };
 
   const exportCSV = async () => {
@@ -107,8 +98,7 @@ export default function ExpensesPage() {
     const csv = [headers.join(','), ...data.rows.map(r => headers.map(h => `"${String(r[h] || '').replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = data.filename || 'expenses.csv'; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = data.filename || 'expenses.csv'; a.click();
     URL.revokeObjectURL(url);
     showToast('Export downloaded', 'success');
   };
@@ -145,49 +135,48 @@ export default function ExpensesPage() {
         ))}
       </div>
 
-      <div className="fe-card">
-        <div className="table-wrap">
-          {filtered.length === 0 ? (
-            <div className="empty-state"><i className="ti ti-receipt" style={{ fontSize: 36, display: 'block', marginBottom: 8 }} />No expenses found</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  {user.role !== 'field_staff' && <th>Employee</th>}
-                  <th>Date</th>
-                  <th>Title</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(e => {
-                  const sm = STATUS_MAP[e.status] || {};
-                  const canApprove = canUserApprove(user, e);
-                  return (
-                    <tr key={e.id}>
-                      {user.role !== 'field_staff' && <td><div style={{ fontWeight: 500 }}>{e.userName}</div><div style={{ fontSize: 11, color: 'var(--fe-gray-400)' }}>{e.userEmpId}</div></td>}
-                      <td style={{ whiteSpace: 'nowrap' }}>{e.date}</td>
-                      <td>
-                        <div style={{ fontWeight: 500 }}>{e.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--fe-gray-400)' }}>{e.description?.slice(0, 50)}{e.description?.length > 50 ? '…' : ''}</div>
-                      </td>
-                      <td style={{ fontWeight: 500 }}>₹{e.amount?.toLocaleString('en-IN')}</td>
-                      <td><span className={`badge ${sm.cls}`}>{sm.label || e.status}</span></td>
-                      <td>
-                        <button className="fe-btn-outline fe-btn-sm" onClick={() => setSelectedExp(e)}>
-                          {canApprove ? 'Review' : 'View'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+      {/* Tile list */}
+      {filtered.length === 0 ? (
+        <div className="fe-card"><div className="empty-state"><i className="ti ti-receipt" style={{ fontSize: 36, display: 'block', marginBottom: 8 }} />No expenses found</div></div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {filtered.map(e => {
+            const sm = STATUS_MAP[e.status] || {};
+            const canApprove = canUserApprove(user, e);
+            return (
+              <div key={e.id} className="fe-card" style={{ padding: '14px 16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {user.role !== 'field_staff' && (
+                      <div style={{ fontSize: 12, color: 'var(--fe-teal-600)', fontWeight: 500, marginBottom: 2 }}>
+                        {e.userName} <span style={{ color: 'var(--fe-gray-400)', fontWeight: 400 }}>· {e.userEmpId}</span>
+                      </div>
+                    )}
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--fe-gray-900)' }}>{e.title}</div>
+                    {e.description && (
+                      <div style={{ fontSize: 12, color: 'var(--fe-gray-400)', marginTop: 2 }}>
+                        {e.description.slice(0, 70)}{e.description.length > 70 ? '…' : ''}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, color: 'var(--fe-gray-400)' }}>
+                        <i className="ti ti-calendar" style={{ fontSize: 11, marginRight: 3 }} />{e.date}
+                      </span>
+                      <span className={`badge ${sm.cls}`}>{sm.label || e.status}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--fe-teal-600)' }}>₹{e.amount?.toLocaleString('en-IN')}</div>
+                    <button className="fe-btn-outline fe-btn-sm" onClick={() => setSelectedExp(e)}>
+                      {canApprove ? 'Review' : 'View'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
 
       {/* New Expense Modal */}
       {showForm && (
@@ -210,7 +199,7 @@ export default function ExpensesPage() {
                 </div>
                 <div className="form-group full">
                   <label className="fe-label">Description</label>
-                  <textarea className="fe-input" style={{ minHeight: 72 }} placeholder="Detailed description of the expense..." value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+                  <textarea className="fe-input" style={{ minHeight: 72 }} placeholder="Detailed description..." value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
                 </div>
                 <div className="form-group full">
                   <label className="fe-label">Receipt / Supporting Image</label>
@@ -232,12 +221,7 @@ export default function ExpensesPage() {
 
       {/* Expense Detail / Approve Modal */}
       {selectedExp && (
-        <ExpenseDetailModal
-          expense={selectedExp}
-          user={user}
-          onClose={() => setSelectedExp(null)}
-          onApprove={(action, reason) => handleApprove(selectedExp.id, action, reason)}
-        />
+        <ExpenseDetailModal expense={selectedExp} user={user} onClose={() => setSelectedExp(null)} onApprove={(action, reason) => handleApprove(selectedExp.id, action, reason)} />
       )}
     </AppShell>
   );
@@ -267,7 +251,6 @@ function ExpenseDetailModal({ expense: exp, user, onClose, onApprove }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-title"><i className="ti ti-receipt-2" /> Expense Detail</div>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
           <div><div style={{ fontSize: 11, color: 'var(--fe-gray-400)' }}>Employee</div><div style={{ fontWeight: 500 }}>{exp.userName}</div></div>
           <div><div style={{ fontSize: 11, color: 'var(--fe-gray-400)' }}>Date</div><div>{exp.date}</div></div>
@@ -276,32 +259,28 @@ function ExpenseDetailModal({ expense: exp, user, onClose, onApprove }) {
           <div style={{ gridColumn: '1/-1' }}><div style={{ fontSize: 11, color: 'var(--fe-gray-400)' }}>Description</div><div style={{ fontSize: 13 }}>{exp.description || '—'}</div></div>
           <div><div style={{ fontSize: 11, color: 'var(--fe-gray-400)' }}>Status</div><span className={`badge ${sm.cls}`}>{sm.label}</span></div>
         </div>
-
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: 'var(--fe-gray-400)', marginBottom: 8 }}>Approval Progress</div>
           <div className="approval-timeline">
             {steps.map((s, i) => (
-              <div key={i} className={`timeline-step ${s.done ? 'done' : ''} ${!s.done && i > 0 && steps[i - 1].done ? 'active' : ''}`}>
+              <div key={i} className={`timeline-step ${s.done ? 'done' : ''}`}>
                 <div style={{ fontSize: 13, fontWeight: s.done ? 500 : 400, color: s.done ? 'var(--fe-teal-800)' : 'var(--fe-gray-400)' }}>{s.label}</div>
                 {s.date && <div style={{ fontSize: 11, color: 'var(--fe-gray-400)' }}>{s.date}</div>}
               </div>
             ))}
           </div>
         </div>
-
         {exp.rejectionReason && (
           <div style={{ background: 'var(--fe-red-50)', border: '1px solid var(--fe-red-100)', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13, color: 'var(--fe-red-800)' }}>
             <strong>Rejected:</strong> {exp.rejectionReason}
           </div>
         )}
-
         {showReject && (
           <div style={{ marginBottom: 16 }}>
             <label className="fe-label">Rejection Reason</label>
-            <textarea className="fe-input" style={{ minHeight: 64 }} value={rejReason} onChange={e => setRejReason(e.target.value)} placeholder="Please provide reason for rejection..." />
+            <textarea className="fe-input" style={{ minHeight: 64 }} value={rejReason} onChange={e => setRejReason(e.target.value)} placeholder="Please provide reason..." />
           </div>
         )}
-
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button className="fe-btn-outline" onClick={onClose}>Close</button>
           {canApprove && !showReject && (

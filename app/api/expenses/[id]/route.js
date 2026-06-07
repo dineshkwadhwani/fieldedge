@@ -3,7 +3,7 @@ import { getStore } from '@/lib/store';
 
 export async function GET(request, { params }) {
   const store = getStore();
-  const { id } = params;
+  const { id } = await params;
   const exp = store.expenses.find(e => e.id === id);
   if (!exp) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -21,7 +21,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const store = getStore();
-  const { id } = params;
+  const { id } = await params;
   try {
     const { action, approvedBy, rejectionReason } = await request.json();
     const idx = store.expenses.findIndex(e => e.id === id);

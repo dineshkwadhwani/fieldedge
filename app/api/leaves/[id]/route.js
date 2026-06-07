@@ -3,7 +3,7 @@ import { getStore } from '@/lib/store';
 
 export async function PATCH(request, { params }) {
   const store = getStore();
-  const { id } = params;
+  const { id } = await params;
   try {
     const { action, rejectionReason } = await request.json();
     const idx = store.leaves.findIndex(l => l.id === id);

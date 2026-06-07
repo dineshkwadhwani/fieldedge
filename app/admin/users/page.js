@@ -128,41 +128,53 @@ export default function AdminUsers() {
         <input className="fe-input" style={{ maxWidth: 340 }} placeholder="Search by name, email, or emp ID..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      <div className="fe-card">
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Emp ID</th><th>Name</th><th>Role</th><th>Title</th><th>Manager</th><th>Location</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {filtered.map(u => (
-                <tr key={u.id}>
-                  <td style={{ fontWeight: 500, fontSize: 12 }}>{u.empId}</td>
-                  <td>
-                    <div style={{ fontWeight: 500 }}>{u.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--fe-gray-400)' }}>{u.email}</div>
-                  </td>
-                  <td>
-                    <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, background: 'var(--fe-teal-50)', color: 'var(--fe-teal-800)' }}>
-                      {ROLE_LABELS[u.role] || u.role}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: 12 }}>{u.title || '—'}</td>
-                  <td style={{ fontSize: 12 }}>{u.managerName || '—'}</td>
-                  <td style={{ fontSize: 12 }}>{u.locationName || '—'}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="fe-btn-outline fe-btn-sm" onClick={() => openEdit(u)}><i className="ti ti-edit" /></button>
-                      <button className="fe-btn-outline fe-btn-sm" onClick={() => { setResetModal(u); setNewPassword(''); }}><i className="ti ti-key" /></button>
-                      <button style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--fe-red-100)', background: 'var(--fe-red-50)', color: 'var(--fe-red-600)', cursor: 'pointer', fontSize: 12 }} onClick={() => deactivateUser(u.id)}><i className="ti ti-trash" /></button>
+      {filtered.length === 0 ? (
+        <div className="fe-card"><div className="empty-state"><i className="ti ti-users" style={{ fontSize: 36, display: 'block', marginBottom: 8 }} />No users found</div></div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {filtered.map(u => {
+            const initials = u.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            return (
+              <div key={u.id} className="fe-card" style={{ padding: '14px 16px' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ width: 42, height: 42, background: 'var(--fe-teal-400)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 600, color: 'white', flexShrink: 0 }}>
+                    {initials}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{u.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--fe-gray-400)' }}>{u.email}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button className="fe-btn-outline fe-btn-sm" onClick={() => openEdit(u)} title="Edit"><i className="ti ti-edit" /></button>
+                        <button className="fe-btn-outline fe-btn-sm" onClick={() => { setResetModal(u); setNewPassword(''); }} title="Reset password"><i className="ti ti-key" /></button>
+                        <button onClick={() => deactivateUser(u.id)} title="Deactivate"
+                          style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--fe-red-100)', background: 'var(--fe-red-50)', color: 'var(--fe-red-600)', cursor: 'pointer', fontSize: 12 }}>
+                          <i className="ti ti-trash" />
+                        </button>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'var(--fe-teal-50)', color: 'var(--fe-teal-800)' }}>
+                        {ROLE_LABELS[u.role] || u.role}
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--fe-gray-400)' }}>{u.empId}</span>
+                      {u.title && <span style={{ fontSize: 12, color: 'var(--fe-gray-500)' }}>· {u.title}</span>}
+                    </div>
+                    {(u.managerName || u.locationName) && (
+                      <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+                        {u.managerName && <span style={{ fontSize: 12, color: 'var(--fe-gray-400)' }}><i className="ti ti-user" style={{ fontSize: 11 }} /> {u.managerName}</span>}
+                        {u.locationName && <span style={{ fontSize: 12, color: 'var(--fe-gray-400)' }}><i className="ti ti-map-pin" style={{ fontSize: 11 }} /> {u.locationName}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
 
       {/* Create/Edit Modal */}
       {showForm && (

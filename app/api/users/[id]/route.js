@@ -3,7 +3,7 @@ import { getStore } from '@/lib/store';
 
 export async function PATCH(request, { params }) {
   const store = getStore();
-  const { id } = params;
+  const { id } = await params;
   try {
     const body = await request.json();
     const idx = store.users.findIndex(u => u.id === id);
@@ -23,7 +23,7 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   const store = getStore();
-  const { id } = params;
+  const { id } = await params;
   const idx = store.users.findIndex(u => u.id === id);
   if (idx === -1) return NextResponse.json({ error: 'User not found' }, { status: 404 });
   store.users[idx].active = false;
